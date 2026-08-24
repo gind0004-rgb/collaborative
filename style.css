@@ -1,0 +1,93 @@
+/* basic calendar styling */
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f2f2f2;
+    color: #222;
+}
+
+header {
+    background: white;
+    border-bottom: 1px solid #ccc;
+    padding: 18px 25px;
+}
+
+header h1 {
+    margin: 0;
+}
+
+main {
+    max-width: 950px;
+    margin: 30px auto;
+    padding: 0 15px;
+}
+
+.calendarTop {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    border: 1px solid #ccc;
+    padding: 10px 15px;
+}
+
+.calendarTop h2 {
+    margin: 5px;
+}
+
+.calendarTop button {
+    background: white;
+    border: 1px solid #aaa;
+    padding: 7px 13px;
+    cursor: pointer;
+}
+
+.calendar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    background: white;
+    border-left: 1px solid #ccc;
+    margin-top: 10px;
+}
+
+.dayName {
+    text-align: center;
+    font-weight: bold;
+    padding: 10px;
+    border-right: 1px solid #ccc;
+    border-top: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+}
+
+.day {
+    min-height: 115px;
+    padding: 8px;
+    border-right: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+}
+
+.day span {
+    font-size: 14px;
+}
+
+.event {
+    margin-top: 12px;
+    padding: 6px;
+    background: #dddddd;
+    border-radius: 3px;
+    font-size: 13px;
+}
+
+/* makes it less broken if the screen is small */
+@media (max-width: 650px) {
+    .day {
+        min-height: 80px;
+        padding: 5px;
+    }
+
+    .event {
+        font-size: 11px;
+        padding: 4px;
+    }
+}
