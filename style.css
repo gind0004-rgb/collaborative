@@ -1,4 +1,3 @@
-/* basic calendar styling */
 
 body {
     margin: 0;
@@ -79,7 +78,6 @@ main {
     font-size: 13px;
 }
 
-/* makes it less broken if the screen is small */
 @media (max-width: 650px) {
     .day {
         min-height: 80px;
