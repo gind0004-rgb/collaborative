@@ -60,14 +60,41 @@ main {
 }
 
 .day {
+    position: relative;
     min-height: 115px;
     padding: 8px;
     border-right: 1px solid #ccc;
     border-bottom: 1px solid #ccc;
 }
 
+.day.empty {
+    background: #fafafa;
+}
+
 .day span {
     font-size: 14px;
+}
+
+.addEventBtn {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    line-height: 1;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 1px solid #aaa;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.addEventBtn:hover {
+    background: #eee;
 }
 
 .event {
@@ -76,6 +103,93 @@ main {
     background: #dddddd;
     border-radius: 3px;
     font-size: 13px;
+    cursor: pointer;
+}
+
+.event:hover {
+    background: #cfcfcf;
+}
+
+/* modal */
+
+.modalOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modalOverlay.visible {
+    display: flex;
+}
+
+.modal {
+    background: white;
+    padding: 20px;
+    border-radius: 6px;
+    width: 320px;
+    max-width: 90%;
+    box-sizing: border-box;
+}
+
+.modal h3 {
+    margin-top: 0;
+}
+
+.modal label {
+    display: block;
+    margin-top: 10px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.modal input[type="text"],
+.modal textarea {
+    width: 100%;
+    margin-top: 4px;
+    padding: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+.modal textarea {
+    min-height: 70px;
+    resize: vertical;
+}
+
+.modalActions {
+    margin-top: 16px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.modalActions button {
+    padding: 6px 14px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 13px;
+}
+
+.btnPrimary {
+    background: #333;
+    color: white;
+    border: none;
+}
+
+.btnDanger {
+    background: #c0392b;
+    color: white;
+    border: none;
+}
+
+.btnSecondary {
+    background: white;
+    border: 1px solid #aaa;
 }
 
 @media (max-width: 650px) {
