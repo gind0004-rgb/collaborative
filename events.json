@@ -3,7 +3,8 @@
         {
             "id": "evt-seed-1",
             "title": "science week",
-            "description": ""
+            "description": "",
+            "importance": "moderate"
         }
     ]
 }

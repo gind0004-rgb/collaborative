@@ -19,7 +19,24 @@
             <button type="button" id="nextMonthBtn">&gt;</button>
         </div>
 
-        <!-- days are now generated in script.js -->
+        <!-- colour legend and filter -->
+        <div class="filterBar" id="filterBar">
+            <span class="filterLabel">Show:</span>
+            <label class="filterItem">
+                <input type="checkbox" class="filterCheckbox" value="minor" checked>
+                <span class="colorDot dot-minor"></span> Minor
+            </label>
+            <label class="filterItem">
+                <input type="checkbox" class="filterCheckbox" value="moderate" checked>
+                <span class="colorDot dot-moderate"></span> Moderate
+            </label>
+            <label class="filterItem">
+                <input type="checkbox" class="filterCheckbox" value="major" checked>
+                <span class="colorDot dot-major"></span> Major
+            </label>
+        </div>
+
+        <!-- days are generated in script.js -->
         <div class="calendar" id="calendar">
             <div class="dayName">Mon</div>
             <div class="dayName">Tue</div>

@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY = 'schoolCalendarEvents';
+    const IMPORTANCE_LEVELS = ['minor', 'moderate', 'major'];
 
     const calendarEl = document.getElementById('calendar');
     const monthLabel = document.getElementById('monthLabel');
@@ -7,13 +8,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextBtn = document.getElementById('nextMonthBtn');
     const modalOverlay = document.getElementById('modalOverlay');
     const modal = document.getElementById('modal');
+    const filterCheckboxes = document.querySelectorAll('.filterCheckbox');
 
     const today = new Date();
     let viewYear = today.getFullYear();
-    let viewMonth = today.getMonth(); // 0 = Jan
+    let viewMonth = today.getMonth(); // 0 = Jan ... 11 = Dec
 
-    // events is the in the JSON data.
+    // events is in the JSON data.
     let events = {};
+
+    // which importance levels are currently visible on the calendar
+    let activeFilters = new Set(IMPORTANCE_LEVELS);
 
     function pad(n) {
         return String(n).padStart(2, '0');
@@ -23,8 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${y}-${pad(m + 1)}-${pad(d)}`;
     }
 
-    // Loads events.json on first run.
-    // If fetch fails, falls back to a small built-in default so the app still works
     function loadEvents(callback) {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
@@ -47,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(() => {
                 events = {
                     '2026-08-12': [
-                        { id: 'evt-seed-1', title: 'science week', description: '' }
+                        { id: 'evt-seed-1', title: 'science week', description: '', importance: 'moderate' }
                     ]
                 };
                 saveEvents();
@@ -105,9 +108,9 @@ document.addEventListener('DOMContentLoaded', () => {
             addBtn.addEventListener('click', () => openAddEventModal(key));
             dayEl.appendChild(addBtn);
 
-            (events[key] || []).forEach(evt => {
-                dayEl.appendChild(buildEventEl(key, evt));
-            });
+            (events[key] || [])
+                .filter(evt => activeFilters.has(evt.importance || 'minor'))
+                .forEach(evt => dayEl.appendChild(buildEventEl(key, evt)));
 
             calendarEl.appendChild(dayEl);
         }
@@ -115,7 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function buildEventEl(key, evt) {
         const el = document.createElement('div');
-        el.className = 'event';
+        const importance = evt.importance || 'minor';
+        el.className = `event importance-${importance}`;
         el.textContent = evt.title;
         el.addEventListener('click', () => openViewEventModal(key, evt.id));
         return el;
@@ -127,9 +131,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return div.innerHTML;
     }
 
+    function capitalize(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
     function closeModal() {
         modalOverlay.classList.remove('visible');
         modal.innerHTML = '';
+    }
+
+    function importanceOptionsHtml(selected) {
+        return IMPORTANCE_LEVELS.map(level =>
+            `<option value="${level}" ${level === selected ? 'selected' : ''}>${capitalize(level)}</option>`
+        ).join('');
     }
 
     function openAddEventModal(key) {
@@ -139,6 +153,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <input type="text" id="eventTitleInput" maxlength="60" autocomplete="off" />
             <label for="eventDescInput">Description</label>
             <textarea id="eventDescInput"></textarea>
+            <label for="eventImportanceInput">Importance</label>
+            <select id="eventImportanceInput">${importanceOptionsHtml('minor')}</select>
             <div class="modalActions">
                 <button type="button" class="btnSecondary" id="cancelBtn">Cancel</button>
                 <button type="button" class="btnPrimary" id="saveBtn">Save</button>
@@ -157,11 +173,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             const description = document.getElementById('eventDescInput').value.trim();
+            const importance = document.getElementById('eventImportanceInput').value;
 
             const newEvent = {
                 id: 'evt-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
                 title,
-                description
+                description,
+                importance
             };
 
             if (!events[key]) events[key] = [];
@@ -176,8 +194,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const evt = (events[key] || []).find(e => e.id === id);
         if (!evt) return;
 
+        const importance = evt.importance || 'minor';
+
         modal.innerHTML = `
             <h3>${escapeHtml(evt.title)}</h3>
+            <div class="eventMeta">
+                <span class="colorDot dot-${importance}"></span> ${capitalize(importance)}
+            </div>
             <p>${evt.description ? escapeHtml(evt.description) : '<em>No description</em>'}</p>
             <div class="modalActions">
                 <button type="button" class="btnDanger" id="deleteBtn">Delete</button>
@@ -216,6 +239,17 @@ document.addEventListener('DOMContentLoaded', () => {
             viewYear++;
         }
         renderCalendar();
+    });
+
+    filterCheckboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+            activeFilters = new Set(
+                Array.from(filterCheckboxes)
+                    .filter(c => c.checked)
+                    .map(c => c.value)
+            );
+            renderCalendar();
+        });
     });
 
     loadEvents(renderCalendar);
