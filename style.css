@@ -15,6 +15,30 @@ header h1 {
     margin: 0;
 }
 
+.headerContent {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.notificationBtn {
+    background: white;
+    border: 1px solid #aaa;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+#notificationCount {
+    display: inline-block;
+    background: #333;
+    color: white;
+    border-radius: 10px;
+    padding: 2px 6px;
+    margin-left: 5px;
+    font-size: 11px;
+}
+
 main {
     max-width: 950px;
     margin: 30px auto;
@@ -230,7 +254,6 @@ main {
     margin-top: 4px;
 }
 
-/* this is for the extra event information */
 .eventInfo {
     margin-top: 12px;
     font-size: 13px;
@@ -271,6 +294,33 @@ main {
     border: 1px solid #aaa;
 }
 
+/* notification list */
+
+.notificationItem {
+    border-bottom: 1px solid #ddd;
+    padding: 10px 0;
+}
+
+.notificationItem:last-child {
+    border-bottom: none;
+}
+
+.notificationItem p {
+    margin: 0;
+    font-size: 13px;
+}
+
+.notificationTime {
+    color: #777;
+    font-size: 11px;
+    margin-top: 4px;
+}
+
+.noNotifications {
+    color: #777;
+    font-size: 13px;
+}
+
 @media (max-width: 650px) {
     .day {
         min-height: 80px;
@@ -283,6 +333,10 @@ main {
     }
 
     .filterBar {
+        gap: 10px;
+    }
+
+    .headerContent {
         gap: 10px;
     }
 }
