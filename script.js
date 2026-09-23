@@ -369,6 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             <div class="modalActions">
                 <button type="button" class="btnDanger" id="deleteBtn">Delete</button>
+                <button type="button" class="btnSecondary" id="notifyEventBtn">Add notification</button>
                 <button type="button" class="btnSecondary" id="reminderBtn">Email reminder</button>
                 <button type="button" class="btnSecondary" id="editBtn">Edit</button>
                 <button type="button" class="btnSecondary" id="closeBtn">Close</button>
@@ -381,6 +382,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('editBtn').addEventListener('click', () => {
             openEditEventModal(key, id);
+        });
+
+        // adds this event to the built in notifications
+        document.getElementById('notifyEventBtn').addEventListener('click', () => {
+            addNotification('Approaching event: ' + evt.title + ' on ' + key);
+
+            modal.innerHTML = `
+                <h3>Notification added</h3>
+
+                <p>
+                    ${escapeHtml(evt.title)} has been added to your notifications.
+                </p>
+
+                <p class="prototypeNote">
+                    This is a prototype reminder for an approaching event.
+                </p>
+
+                <div class="modalActions">
+                    <button type="button" class="btnPrimary" id="notificationAddedBtn">Close</button>
+                </div>
+            `;
+
+            document.getElementById('notificationAddedBtn').addEventListener('click', closeModal);
         });
 
         // opens the prototype email reminder
