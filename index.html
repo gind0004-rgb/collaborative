@@ -10,13 +10,20 @@
 
     <header>
         <div class="headerContent">
-            <h1>School Events</h1>
+            <div>
+                <h1>School Events</h1>
+                <span id="modeLabel">Admin mode</span>
+            </div>
 
-            <!-- notifications added in this update -->
-            <button type="button" id="notificationBtn" class="notificationBtn">
-                Notifications
-                <span id="notificationCount">0</span>
-            </button>
+            <div class="headerButtons">
+                <button type="button" id="notificationBtn" class="notificationBtn">
+                    Notifications
+                    <span id="notificationCount">0</span>
+                </button>
+
+                <!-- switches between staff and student view -->
+                <button type="button" id="settingsBtn" class="settingsBtn">⚙</button>
+            </div>
         </div>
     </header>
 
@@ -27,7 +34,6 @@
             <button type="button" id="nextMonthBtn">&gt;</button>
         </div>
 
-        <!-- colour legend and filter -->
         <div class="filterBar" id="filterBar">
             <span class="filterLabel">Show:</span>
 
@@ -57,7 +63,6 @@
             </label>
         </div>
 
-        <!-- days are generated in script.js -->
         <div class="calendar" id="calendar">
             <div class="dayName">Mon</div>
             <div class="dayName">Tue</div>
