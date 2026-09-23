@@ -230,6 +230,7 @@ main {
 
 .modal input[type="text"],
 .modal input[type="time"],
+.modal input[type="email"],
 .modal textarea,
 .modal select {
     width: 100%;
@@ -268,6 +269,7 @@ main {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+    flex-wrap: wrap;
 }
 
 .modalActions button {
@@ -319,6 +321,12 @@ main {
 .noNotifications {
     color: #777;
     font-size: 13px;
+}
+
+/* reminder is only a prototype for now */
+.prototypeNote {
+    color: #666;
+    font-size: 12px;
 }
 
 @media (max-width: 650px) {
