@@ -321,8 +321,6 @@ document.addEventListener('DOMContentLoaded', () => {
             events[key].push(newEvent);
 
             saveEvents();
-
-            // tells students that a new event was added
             addNotification('New event added: ' + title);
 
             closeModal();
@@ -363,6 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             <div class="modalActions">
                 <button type="button" class="btnDanger" id="deleteBtn">Delete</button>
+                <button type="button" class="btnSecondary" id="reminderBtn">Email reminder</button>
                 <button type="button" class="btnSecondary" id="editBtn">Edit</button>
                 <button type="button" class="btnSecondary" id="closeBtn">Close</button>
             </div>
@@ -376,6 +375,11 @@ document.addEventListener('DOMContentLoaded', () => {
             openEditEventModal(key, id);
         });
 
+        // opens the prototype email reminder
+        document.getElementById('reminderBtn').addEventListener('click', () => {
+            openReminderModal(key, id);
+        });
+
         document.getElementById('deleteBtn').addEventListener('click', () => {
             const deletedTitle = evt.title;
 
@@ -386,12 +390,75 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             saveEvents();
-
-            // deletion can also represent an event being cancelled
             addNotification('Event removed: ' + deletedTitle);
 
             closeModal();
             renderCalendar();
+        });
+    }
+
+    // prototype for the email reminder feature
+    function openReminderModal(key, id) {
+        const evt = (events[key] || []).find(e => e.id === id);
+
+        if (!evt) return;
+
+        modal.innerHTML = `
+            <h3>Email reminder</h3>
+
+            <p class="prototypeNote">
+                Set an email reminder for ${escapeHtml(evt.title)}.
+            </p>
+
+            <label for="reminderEmail">Email</label>
+            <input type="email" id="reminderEmail" placeholder="student@email.com" />
+
+            <label for="reminderTime">Send reminder</label>
+            <select id="reminderTime">
+                <option value="1 day before">1 day before</option>
+                <option value="morning of event">Morning of event</option>
+                <option value="1 hour before">1 hour before</option>
+            </select>
+
+            <div class="modalActions">
+                <button type="button" class="btnSecondary" id="backReminderBtn">Back</button>
+                <button type="button" class="btnPrimary" id="setReminderBtn">Set reminder</button>
+            </div>
+        `;
+
+        document.getElementById('backReminderBtn').addEventListener('click', () => {
+            openViewEventModal(key, id);
+        });
+
+        document.getElementById('setReminderBtn').addEventListener('click', () => {
+            const email = document.getElementById('reminderEmail').value.trim();
+            const reminderTime = document.getElementById('reminderTime').value;
+
+            // simple check for the prototype
+            if (email === '' || !email.includes('@')) {
+                document.getElementById('reminderEmail').focus();
+                return;
+            }
+
+            modal.innerHTML = `
+                <h3>Reminder set</h3>
+
+                <p>
+                    A reminder for <strong>${escapeHtml(evt.title)}</strong>
+                    would be sent to <strong>${escapeHtml(email)}</strong>
+                    ${escapeHtml(reminderTime)}.
+                </p>
+
+                <p class="prototypeNote">
+                    This is a prototype, so an email is not actually sent.
+                </p>
+
+                <div class="modalActions">
+                    <button type="button" class="btnPrimary" id="finishReminderBtn">Close</button>
+                </div>
+            `;
+
+            document.getElementById('finishReminderBtn').addEventListener('click', closeModal);
         });
     }
 
@@ -454,8 +521,6 @@ document.addEventListener('DOMContentLoaded', () => {
             evt.importance = document.getElementById('editImportanceInput').value;
 
             saveEvents();
-
-            // makes a notification when event information changes
             addNotification('Event updated: ' + evt.title);
 
             closeModal();
@@ -508,6 +573,11 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCalendar();
     });
 
+    notificationBtn.addEventListener('click', openNotifications);
+
+    loadNotifications();
+    loadEvents(renderCalendar);
+});
     notificationBtn.addEventListener('click', openNotifications);
 
     loadNotifications();
