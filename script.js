@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function loadEvents(callback) {
         const saved = localStorage.getItem(STORAGE_KEY);
+
         if (saved) {
             try {
                 events = JSON.parse(saved);
@@ -50,9 +51,18 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(() => {
                 events = {
                     '2026-08-12': [
-                        { id: 'evt-seed-1', title: 'science week', description: '', importance: 'moderate' }
+                        {
+                            id: 'evt-seed-1',
+                            title: 'science week',
+                            description: '',
+                            importance: 'moderate',
+                            time: '10:00',
+                            location: 'school',
+                            yearLevel: 'all'
+                        }
                     ]
                 };
+
                 saveEvents();
                 callback();
             });
@@ -65,7 +75,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Returns 0 (Mon) .. 4 (Fri) for a weekday date, or null for Sat/Sun.
     function getWeekdayColumn(date) {
         const d = date.getDay(); // 0 Sun .. 6 Sat
+
         if (d === 0 || d === 6) return null;
+
         return d - 1;
     }
 
@@ -88,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         for (let d = 1; d <= daysInMonth; d++) {
             const col = getWeekdayColumn(new Date(viewYear, viewMonth, d));
+
             if (col === null) continue; // skip weekends entirely
 
             const key = dateKey(viewYear, viewMonth, d);
@@ -119,9 +132,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function buildEventEl(key, evt) {
         const el = document.createElement('div');
         const importance = evt.importance || 'minor';
+
         el.className = `event importance-${importance}`;
         el.textContent = evt.title;
+
         el.addEventListener('click', () => openViewEventModal(key, evt.id));
+
         return el;
     }
 
@@ -146,44 +162,85 @@ document.addEventListener('DOMContentLoaded', () => {
         ).join('');
     }
 
+    // this makes the year level options for the forms
+    function yearLevelOptionsHtml(selected) {
+        return `
+            <option value="all" ${selected === 'all' ? 'selected' : ''}>All years</option>
+            <option value="10" ${selected === '10' ? 'selected' : ''}>Year 10</option>
+            <option value="11" ${selected === '11' ? 'selected' : ''}>Year 11</option>
+            <option value="12" ${selected === '12' ? 'selected' : ''}>Year 12</option>
+        `;
+    }
+
     function openAddEventModal(key) {
         modal.innerHTML = `
             <h3>Add Event</h3>
+
             <label for="eventTitleInput">Title</label>
             <input type="text" id="eventTitleInput" maxlength="60" autocomplete="off" />
+
+            <label for="eventTimeInput">Time</label>
+            <input type="time" id="eventTimeInput" />
+
+            <label for="eventLocationInput">Location</label>
+            <input type="text" id="eventLocationInput" maxlength="60" />
+
+            <label for="eventYearInput">Year level</label>
+            <select id="eventYearInput">
+                ${yearLevelOptionsHtml('all')}
+            </select>
+
             <label for="eventDescInput">Description</label>
             <textarea id="eventDescInput"></textarea>
+
             <label for="eventImportanceInput">Importance</label>
-            <select id="eventImportanceInput">${importanceOptionsHtml('minor')}</select>
+            <select id="eventImportanceInput">
+                ${importanceOptionsHtml('minor')}
+            </select>
+
             <div class="modalActions">
                 <button type="button" class="btnSecondary" id="cancelBtn">Cancel</button>
                 <button type="button" class="btnPrimary" id="saveBtn">Save</button>
             </div>
         `;
+
         modalOverlay.classList.add('visible');
 
         const titleInput = document.getElementById('eventTitleInput');
         titleInput.focus();
 
         document.getElementById('cancelBtn').addEventListener('click', closeModal);
+
         document.getElementById('saveBtn').addEventListener('click', () => {
             const title = titleInput.value.trim();
+
             if (!title) {
                 titleInput.focus();
                 return;
             }
+
             const description = document.getElementById('eventDescInput').value.trim();
             const importance = document.getElementById('eventImportanceInput').value;
+            const time = document.getElementById('eventTimeInput').value;
+            const location = document.getElementById('eventLocationInput').value.trim();
+            const yearLevel = document.getElementById('eventYearInput').value;
 
             const newEvent = {
                 id: 'evt-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
                 title,
                 description,
-                importance
+                importance,
+                time,
+                location,
+                yearLevel
             };
 
-            if (!events[key]) events[key] = [];
+            if (!events[key]) {
+                events[key] = [];
+            }
+
             events[key].push(newEvent);
+
             saveEvents();
             closeModal();
             renderCalendar();
@@ -192,27 +249,125 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function openViewEventModal(key, id) {
         const evt = (events[key] || []).find(e => e.id === id);
+
         if (!evt) return;
 
         const importance = evt.importance || 'minor';
 
+        // old events might not have these yet
+        const time = evt.time || 'Not set';
+        const location = evt.location || 'Not set';
+
+        let yearText = 'All years';
+
+        if (evt.yearLevel && evt.yearLevel !== 'all') {
+            yearText = 'Year ' + evt.yearLevel;
+        }
+
         modal.innerHTML = `
             <h3>${escapeHtml(evt.title)}</h3>
+
             <div class="eventMeta">
-                <span class="colorDot dot-${importance}"></span> ${capitalize(importance)}
+                <span class="colorDot dot-${importance}"></span>
+                ${capitalize(importance)}
             </div>
-            <p>${evt.description ? escapeHtml(evt.description) : '<em>No description</em>'}</p>
+
+            <div class="eventInfo">
+                <p><strong>Date:</strong> ${key}</p>
+                <p><strong>Time:</strong> ${escapeHtml(time)}</p>
+                <p><strong>Location:</strong> ${escapeHtml(location)}</p>
+                <p><strong>Year level:</strong> ${yearText}</p>
+                <p><strong>Description:</strong> ${evt.description ? escapeHtml(evt.description) : 'No description'}</p>
+            </div>
+
             <div class="modalActions">
                 <button type="button" class="btnDanger" id="deleteBtn">Delete</button>
+                <button type="button" class="btnSecondary" id="editBtn">Edit</button>
                 <button type="button" class="btnSecondary" id="closeBtn">Close</button>
             </div>
         `;
+
         modalOverlay.classList.add('visible');
 
         document.getElementById('closeBtn').addEventListener('click', closeModal);
+
+        document.getElementById('editBtn').addEventListener('click', () => {
+            openEditEventModal(key, id);
+        });
+
         document.getElementById('deleteBtn').addEventListener('click', () => {
             events[key] = events[key].filter(e => e.id !== id);
-            if (events[key].length === 0) delete events[key];
+
+            if (events[key].length === 0) {
+                delete events[key];
+            }
+
+            saveEvents();
+            closeModal();
+            renderCalendar();
+        });
+    }
+
+    // this uses most of the same form as adding an event but changes the old event
+    function openEditEventModal(key, id) {
+        const evt = (events[key] || []).find(e => e.id === id);
+
+        if (!evt) return;
+
+        const oldImportance = evt.importance || 'minor';
+        const oldYearLevel = evt.yearLevel || 'all';
+
+        modal.innerHTML = `
+            <h3>Edit Event</h3>
+
+            <label for="editTitleInput">Title</label>
+            <input type="text" id="editTitleInput" maxlength="60" value="${escapeHtml(evt.title)}" />
+
+            <label for="editTimeInput">Time</label>
+            <input type="time" id="editTimeInput" value="${evt.time || ''}" />
+
+            <label for="editLocationInput">Location</label>
+            <input type="text" id="editLocationInput" maxlength="60" value="${escapeHtml(evt.location || '')}" />
+
+            <label for="editYearInput">Year level</label>
+            <select id="editYearInput">
+                ${yearLevelOptionsHtml(oldYearLevel)}
+            </select>
+
+            <label for="editDescInput">Description</label>
+            <textarea id="editDescInput">${escapeHtml(evt.description || '')}</textarea>
+
+            <label for="editImportanceInput">Importance</label>
+            <select id="editImportanceInput">
+                ${importanceOptionsHtml(oldImportance)}
+            </select>
+
+            <div class="modalActions">
+                <button type="button" class="btnSecondary" id="cancelEditBtn">Cancel</button>
+                <button type="button" class="btnPrimary" id="saveEditBtn">Save changes</button>
+            </div>
+        `;
+
+        document.getElementById('cancelEditBtn').addEventListener('click', () => {
+            openViewEventModal(key, id);
+        });
+
+        document.getElementById('saveEditBtn').addEventListener('click', () => {
+            const newTitle = document.getElementById('editTitleInput').value.trim();
+
+            if (!newTitle) {
+                document.getElementById('editTitleInput').focus();
+                return;
+            }
+
+            // changing the same event instead of making another one
+            evt.title = newTitle;
+            evt.time = document.getElementById('editTimeInput').value;
+            evt.location = document.getElementById('editLocationInput').value.trim();
+            evt.yearLevel = document.getElementById('editYearInput').value;
+            evt.description = document.getElementById('editDescInput').value.trim();
+            evt.importance = document.getElementById('editImportanceInput').value;
+
             saveEvents();
             closeModal();
             renderCalendar();
@@ -220,24 +375,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     modalOverlay.addEventListener('click', (e) => {
-        if (e.target === modalOverlay) closeModal();
+        if (e.target === modalOverlay) {
+            closeModal();
+        }
     });
 
     prevBtn.addEventListener('click', () => {
         viewMonth--;
+
         if (viewMonth < 0) {
             viewMonth = 11;
             viewYear--;
         }
+
         renderCalendar();
     });
 
     nextBtn.addEventListener('click', () => {
         viewMonth++;
+
         if (viewMonth > 11) {
             viewMonth = 0;
             viewYear++;
         }
+
         renderCalendar();
     });
 
@@ -248,6 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     .filter(c => c.checked)
                     .map(c => c.value)
             );
+
             renderCalendar();
         });
     });
