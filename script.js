@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY = 'schoolCalendarEvents';
     const NOTIFICATION_KEY = 'schoolCalendarNotifications';
+    const REMINDER_KEY = 'schoolCalendarReminders';
     const IMPORTANCE_LEVELS = ['minor', 'moderate', 'major'];
 
     const calendarEl = document.getElementById('calendar');
@@ -15,22 +16,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const notificationCount = document.getElementById('notificationCount');
 
     const today = new Date();
+
     let viewYear = today.getFullYear();
     let viewMonth = today.getMonth();
 
     let events = {};
     let notifications = [];
+    let reminders = [];
 
     let activeFilters = new Set(IMPORTANCE_LEVELS);
     let selectedYear = 'all';
+
 
     function pad(n) {
         return String(n).padStart(2, '0');
     }
 
+
     function dateKey(y, m, d) {
         return `${y}-${pad(m + 1)}-${pad(d)}`;
     }
+
 
     function loadEvents(callback) {
         const saved = localStorage.getItem(STORAGE_KEY);
@@ -58,9 +64,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     }
 
+
     function saveEvents() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
     }
+
 
     // gets old notifications from the browser
     function loadNotifications() {
@@ -77,12 +85,13 @@ document.addEventListener('DOMContentLoaded', () => {
         updateNotificationCount();
     }
 
+
     function saveNotifications() {
         localStorage.setItem(NOTIFICATION_KEY, JSON.stringify(notifications));
         updateNotificationCount();
     }
 
-    // adds a notification when something happens to an event
+
     function addNotification(message) {
         const newNotification = {
             message: message,
@@ -91,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         notifications.unshift(newNotification);
 
-        // stops the list getting massive
+        // stops the list getting too big
         if (notifications.length > 20) {
             notifications.pop();
         }
@@ -99,9 +108,30 @@ document.addEventListener('DOMContentLoaded', () => {
         saveNotifications();
     }
 
+
     function updateNotificationCount() {
         notificationCount.textContent = notifications.length;
     }
+
+
+    // reminders are separate from normal notifications
+    function loadReminders() {
+        const savedReminders = localStorage.getItem(REMINDER_KEY);
+
+        if (savedReminders) {
+            try {
+                reminders = JSON.parse(savedReminders);
+            } catch (e) {
+                reminders = [];
+            }
+        }
+    }
+
+
+    function saveReminders() {
+        localStorage.setItem(REMINDER_KEY, JSON.stringify(reminders));
+    }
+
 
     function openNotifications() {
         let notificationHtml = '';
@@ -141,6 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+
     function getWeekdayColumn(date) {
         const d = date.getDay();
 
@@ -148,6 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return d - 1;
     }
+
 
     function renderCalendar() {
         monthLabel.textContent = new Date(viewYear, viewMonth, 1)
@@ -215,6 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+
     function buildEventEl(key, evt) {
         const el = document.createElement('div');
         const importance = evt.importance || 'minor';
@@ -229,26 +262,31 @@ document.addEventListener('DOMContentLoaded', () => {
         return el;
     }
 
+
     function escapeHtml(str) {
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
     }
 
+
     function capitalize(str) {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
+
 
     function closeModal() {
         modalOverlay.classList.remove('visible');
         modal.innerHTML = '';
     }
 
+
     function importanceOptionsHtml(selected) {
         return IMPORTANCE_LEVELS.map(level =>
             `<option value="${level}" ${level === selected ? 'selected' : ''}>${capitalize(level)}</option>`
         ).join('');
     }
+
 
     function yearLevelOptionsHtml(selected) {
         return `
@@ -258,6 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <option value="12" ${selected === '12' ? 'selected' : ''}>Year 12</option>
         `;
     }
+
 
     function openAddEventModal(key) {
         modal.innerHTML = `
@@ -329,12 +368,15 @@ document.addEventListener('DOMContentLoaded', () => {
             events[key].push(newEvent);
 
             saveEvents();
+
+            // normal update notification from version 6
             addNotification('New event added: ' + title);
 
             closeModal();
             renderCalendar();
         });
     }
+
 
     function openViewEventModal(key, id) {
         const evt = (events[key] || []).find(e => e.id === id);
@@ -369,8 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             <div class="modalActions">
                 <button type="button" class="btnDanger" id="deleteBtn">Delete</button>
-                <button type="button" class="btnSecondary" id="notifyEventBtn">Add notification</button>
-                <button type="button" class="btnSecondary" id="reminderBtn">Email reminder</button>
+                <button type="button" class="btnSecondary" id="reminderBtn">Set reminder</button>
                 <button type="button" class="btnSecondary" id="editBtn">Edit</button>
                 <button type="button" class="btnSecondary" id="closeBtn">Close</button>
             </div>
@@ -384,30 +425,6 @@ document.addEventListener('DOMContentLoaded', () => {
             openEditEventModal(key, id);
         });
 
-        // adds this event to the built in notifications
-        document.getElementById('notifyEventBtn').addEventListener('click', () => {
-            addNotification('Approaching event: ' + evt.title + ' on ' + key);
-
-            modal.innerHTML = `
-                <h3>Notification added</h3>
-
-                <p>
-                    ${escapeHtml(evt.title)} has been added to your notifications.
-                </p>
-
-                <p class="prototypeNote">
-                    This is a prototype reminder for an approaching event.
-                </p>
-
-                <div class="modalActions">
-                    <button type="button" class="btnPrimary" id="notificationAddedBtn">Close</button>
-                </div>
-            `;
-
-            document.getElementById('notificationAddedBtn').addEventListener('click', closeModal);
-        });
-
-        // opens the prototype email reminder
         document.getElementById('reminderBtn').addEventListener('click', () => {
             openReminderModal(key, id);
         });
@@ -429,32 +446,40 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // prototype for the email reminder feature
+
+    // reminder setup for native, email or both
     function openReminderModal(key, id) {
         const evt = (events[key] || []).find(e => e.id === id);
 
         if (!evt) return;
 
         modal.innerHTML = `
-            <h3>Email reminder</h3>
+            <h3>Set reminder</h3>
 
             <p class="prototypeNote">
-                Set an email reminder for ${escapeHtml(evt.title)}.
+                Choose how and when you want to be reminded about ${escapeHtml(evt.title)}.
             </p>
 
-            <label for="reminderEmail">Email</label>
-            <input type="email" id="reminderEmail" placeholder="student@email.com" />
-
-            <label for="reminderTime">Send reminder</label>
-            <select id="reminderTime">
-                <option value="1 day before">1 day before</option>
-                <option value="morning of event">Morning of event</option>
-                <option value="1 hour before">1 hour before</option>
+            <label for="reminderMethod">Reminder type</label>
+            <select id="reminderMethod">
+                <option value="native">In-app notification</option>
+                <option value="email">Email</option>
+                <option value="both">Both</option>
             </select>
+
+            <label for="reminderTime">Remind me</label>
+            <select id="reminderTime">
+                <option value="day">1 day before</option>
+                <option value="morning">Morning of event</option>
+                <option value="hour">1 hour before</option>
+            </select>
+
+            <label for="reminderEmail">Email</label>
+            <input type="email" id="reminderEmail" placeholder="only needed for email reminders" />
 
             <div class="modalActions">
                 <button type="button" class="btnSecondary" id="backReminderBtn">Back</button>
-                <button type="button" class="btnPrimary" id="setReminderBtn">Set reminder</button>
+                <button type="button" class="btnPrimary" id="saveReminderBtn">Save reminder</button>
             </div>
         `;
 
@@ -462,27 +487,42 @@ document.addEventListener('DOMContentLoaded', () => {
             openViewEventModal(key, id);
         });
 
-        document.getElementById('setReminderBtn').addEventListener('click', () => {
-            const email = document.getElementById('reminderEmail').value.trim();
+        document.getElementById('saveReminderBtn').addEventListener('click', () => {
+            const method = document.getElementById('reminderMethod').value;
             const reminderTime = document.getElementById('reminderTime').value;
+            const email = document.getElementById('reminderEmail').value.trim();
 
-            // simple check for the prototype
-            if (email === '' || !email.includes('@')) {
+            // email is only required when email is selected
+            if ((method === 'email' || method === 'both') && !email.includes('@')) {
                 document.getElementById('reminderEmail').focus();
                 return;
             }
 
+            const newReminder = {
+                id: 'rem-' + Date.now(),
+                eventId: id,
+                eventDate: key,
+                eventTitle: evt.title,
+                eventTime: evt.time || '',
+                method: method,
+                reminderTime: reminderTime,
+                email: email,
+                delivered: false
+            };
+
+            reminders.push(newReminder);
+            saveReminders();
+
+            // confirmation only, this does not add anything to notifications
             modal.innerHTML = `
-                <h3>Reminder set</h3>
+                <h3>Reminder saved</h3>
 
                 <p>
-                    A reminder for <strong>${escapeHtml(evt.title)}</strong>
-                    would be sent to <strong>${escapeHtml(email)}</strong>
-                    ${escapeHtml(reminderTime)}.
+                    Your reminder for <strong>${escapeHtml(evt.title)}</strong> has been saved.
                 </p>
 
                 <p class="prototypeNote">
-                    This is a prototype, so an email is not actually sent.
+                    Email sending is only a prototype and does not send a real email.
                 </p>
 
                 <div class="modalActions">
@@ -493,6 +533,81 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('finishReminderBtn').addEventListener('click', closeModal);
         });
     }
+
+
+    // works out when an in-app reminder should appear
+    function getReminderDate(reminder) {
+        let eventHour = 9;
+        let eventMinute = 0;
+
+        if (reminder.eventTime && reminder.eventTime.includes(':')) {
+            const timeParts = reminder.eventTime.split(':');
+            eventHour = Number(timeParts[0]);
+            eventMinute = Number(timeParts[1]);
+        }
+
+        const dateParts = reminder.eventDate.split('-');
+
+        const eventDate = new Date(
+            Number(dateParts[0]),
+            Number(dateParts[1]) - 1,
+            Number(dateParts[2]),
+            eventHour,
+            eventMinute
+        );
+
+        const reminderDate = new Date(eventDate);
+
+        if (reminder.reminderTime === 'day') {
+            reminderDate.setDate(reminderDate.getDate() - 1);
+        }
+
+        if (reminder.reminderTime === 'morning') {
+            reminderDate.setHours(8, 0, 0, 0);
+        }
+
+        if (reminder.reminderTime === 'hour') {
+            reminderDate.setHours(reminderDate.getHours() - 1);
+        }
+
+        return reminderDate;
+    }
+
+
+    // checks if a saved reminder is now due
+    function checkReminders() {
+        const now = new Date();
+        let changed = false;
+
+        reminders.forEach(reminder => {
+            if (reminder.delivered) {
+                return;
+            }
+
+            const reminderDate = getReminderDate(reminder);
+
+            if (now >= reminderDate) {
+                // native reminders show inside the website
+                if (reminder.method === 'native' || reminder.method === 'both') {
+                    addNotification(
+                        'Approaching event: ' +
+                        reminder.eventTitle +
+                        ' on ' +
+                        reminder.eventDate
+                    );
+                }
+
+                // email is only represented by the prototype
+                reminder.delivered = true;
+                changed = true;
+            }
+        });
+
+        if (changed) {
+            saveReminders();
+        }
+    }
+
 
     function openEditEventModal(key, id) {
         const evt = (events[key] || []).find(e => e.id === id);
@@ -560,11 +675,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+
     modalOverlay.addEventListener('click', (e) => {
         if (e.target === modalOverlay) {
             closeModal();
         }
     });
+
 
     prevBtn.addEventListener('click', () => {
         viewMonth--;
@@ -577,6 +694,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCalendar();
     });
 
+
     nextBtn.addEventListener('click', () => {
         viewMonth++;
 
@@ -587,6 +705,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         renderCalendar();
     });
+
 
     filterCheckboxes.forEach(cb => {
         cb.addEventListener('change', () => {
@@ -600,13 +719,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+
     yearFilter.addEventListener('change', () => {
         selectedYear = yearFilter.value;
         renderCalendar();
     });
 
+
     notificationBtn.addEventListener('click', openNotifications);
 
     loadNotifications();
-    loadEvents(renderCalendar);
+    loadReminders();
+
+    loadEvents(() => {
+        renderCalendar();
+        checkReminders();
+    });
+
+    // checks once per minute while the page is open
+    setInterval(checkReminders, 60000);
 });
