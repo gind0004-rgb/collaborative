@@ -3,8 +3,11 @@
         {
             "id": "evt-seed-1",
             "title": "science week",
-            "description": "",
-            "importance": "moderate"
+            "description": "activities for science week",
+            "importance": "moderate",
+            "time": "10:00",
+            "location": "school",
+            "yearLevel": "all"
         }
     ]
 }
