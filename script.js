@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalOverlay = document.getElementById('modalOverlay');
     const modal = document.getElementById('modal');
     const filterCheckboxes = document.querySelectorAll('.filterCheckbox');
+    const yearFilter = document.getElementById('yearFilter');
 
     const today = new Date();
     let viewYear = today.getFullYear();
@@ -19,6 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // which importance levels are currently visible on the calendar
     let activeFilters = new Set(IMPORTANCE_LEVELS);
+
+    // this is the year the student wants to see
+    let selectedYear = 'all';
 
     function pad(n) {
         return String(n).padStart(2, '0');
@@ -123,6 +127,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             (events[key] || [])
                 .filter(evt => activeFilters.has(evt.importance || 'minor'))
+
+                // this checks if the event belongs to the selected year
+                .filter(evt => {
+                    const eventYear = evt.yearLevel || 'all';
+
+                    if (selectedYear === 'all') {
+                        return true;
+                    }
+
+                    if (eventYear === 'all') {
+                        return true;
+                    }
+
+                    return eventYear === selectedYear;
+                })
+
                 .forEach(evt => dayEl.appendChild(buildEventEl(key, evt)));
 
             calendarEl.appendChild(dayEl);
@@ -412,6 +432,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             renderCalendar();
         });
+    });
+
+    // change the calendar whenever a different year level is picked
+    yearFilter.addEventListener('change', () => {
+        selectedYear = yearFilter.value;
+        renderCalendar();
     });
 
     loadEvents(renderCalendar);
