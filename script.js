@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY = 'schoolCalendarEvents';
+    const NOTIFICATION_KEY = 'schoolCalendarNotifications';
     const IMPORTANCE_LEVELS = ['minor', 'moderate', 'major'];
 
     const calendarEl = document.getElementById('calendar');
@@ -10,18 +11,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('modal');
     const filterCheckboxes = document.querySelectorAll('.filterCheckbox');
     const yearFilter = document.getElementById('yearFilter');
+    const notificationBtn = document.getElementById('notificationBtn');
+    const notificationCount = document.getElementById('notificationCount');
 
     const today = new Date();
     let viewYear = today.getFullYear();
-    let viewMonth = today.getMonth(); // 0 = Jan ... 11 = Dec
+    let viewMonth = today.getMonth();
 
-    // events is in the JSON data.
     let events = {};
+    let notifications = [];
 
-    // which importance levels are currently visible on the calendar
     let activeFilters = new Set(IMPORTANCE_LEVELS);
-
-    // this is the year the student wants to see
     let selectedYear = 'all';
 
     function pad(n) {
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 callback();
                 return;
             } catch (e) {
-                console.warn('Saved event data was invalid, reloading defaults', e);
+                console.warn('saved event data was invalid');
             }
         }
 
@@ -53,21 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 callback();
             })
             .catch(() => {
-                events = {
-                    '2026-08-12': [
-                        {
-                            id: 'evt-seed-1',
-                            title: 'science week',
-                            description: '',
-                            importance: 'moderate',
-                            time: '10:00',
-                            location: 'school',
-                            yearLevel: 'all'
-                        }
-                    ]
-                };
-
-                saveEvents();
+                events = {};
                 callback();
             });
     }
@@ -76,9 +62,87 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
     }
 
-    // Returns 0 (Mon) .. 4 (Fri) for a weekday date, or null for Sat/Sun.
+    // gets old notifications from the browser
+    function loadNotifications() {
+        const savedNotifications = localStorage.getItem(NOTIFICATION_KEY);
+
+        if (savedNotifications) {
+            try {
+                notifications = JSON.parse(savedNotifications);
+            } catch (e) {
+                notifications = [];
+            }
+        }
+
+        updateNotificationCount();
+    }
+
+    function saveNotifications() {
+        localStorage.setItem(NOTIFICATION_KEY, JSON.stringify(notifications));
+        updateNotificationCount();
+    }
+
+    // adds a notification when something happens to an event
+    function addNotification(message) {
+        const newNotification = {
+            message: message,
+            time: new Date().toLocaleString()
+        };
+
+        notifications.unshift(newNotification);
+
+        // stops the list getting massive
+        if (notifications.length > 20) {
+            notifications.pop();
+        }
+
+        saveNotifications();
+    }
+
+    function updateNotificationCount() {
+        notificationCount.textContent = notifications.length;
+    }
+
+    function openNotifications() {
+        let notificationHtml = '';
+
+        if (notifications.length === 0) {
+            notificationHtml = '<p class="noNotifications">No notifications</p>';
+        } else {
+            notifications.forEach(item => {
+                notificationHtml += `
+                    <div class="notificationItem">
+                        <p>${escapeHtml(item.message)}</p>
+                        <div class="notificationTime">${escapeHtml(item.time)}</div>
+                    </div>
+                `;
+            });
+        }
+
+        modal.innerHTML = `
+            <h3>Notifications</h3>
+
+            ${notificationHtml}
+
+            <div class="modalActions">
+                <button type="button" class="btnSecondary" id="clearNotificationsBtn">Clear</button>
+                <button type="button" class="btnPrimary" id="closeNotificationsBtn">Close</button>
+            </div>
+        `;
+
+        modalOverlay.classList.add('visible');
+
+        document.getElementById('closeNotificationsBtn').addEventListener('click', closeModal);
+
+        document.getElementById('clearNotificationsBtn').addEventListener('click', () => {
+            notifications = [];
+            saveNotifications();
+            openNotifications();
+        });
+    }
+
     function getWeekdayColumn(date) {
-        const d = date.getDay(); // 0 Sun .. 6 Sat
+        const d = date.getDay();
 
         if (d === 0 || d === 6) return null;
 
@@ -89,7 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
         monthLabel.textContent = new Date(viewYear, viewMonth, 1)
             .toLocaleString('default', { month: 'long', year: 'numeric' });
 
-        // remove previously generated day cells, keep the Mon-Fri header row
         calendarEl.querySelectorAll('.day').forEach(el => el.remove());
 
         const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -105,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let d = 1; d <= daysInMonth; d++) {
             const col = getWeekdayColumn(new Date(viewYear, viewMonth, d));
 
-            if (col === null) continue; // skip weekends entirely
+            if (col === null) continue;
 
             const key = dateKey(viewYear, viewMonth, d);
 
@@ -127,8 +190,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             (events[key] || [])
                 .filter(evt => activeFilters.has(evt.importance || 'minor'))
-
-                // this checks if the event belongs to the selected year
                 .filter(evt => {
                     const eventYear = evt.yearLevel || 'all';
 
@@ -142,7 +203,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     return eventYear === selectedYear;
                 })
-
                 .forEach(evt => dayEl.appendChild(buildEventEl(key, evt)));
 
             calendarEl.appendChild(dayEl);
@@ -182,7 +242,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ).join('');
     }
 
-    // this makes the year level options for the forms
     function yearLevelOptionsHtml(selected) {
         return `
             <option value="all" ${selected === 'all' ? 'selected' : ''}>All years</option>
@@ -262,6 +321,10 @@ document.addEventListener('DOMContentLoaded', () => {
             events[key].push(newEvent);
 
             saveEvents();
+
+            // tells students that a new event was added
+            addNotification('New event added: ' + title);
+
             closeModal();
             renderCalendar();
         });
@@ -273,8 +336,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!evt) return;
 
         const importance = evt.importance || 'minor';
-
-        // old events might not have these yet
         const time = evt.time || 'Not set';
         const location = evt.location || 'Not set';
 
@@ -316,6 +377,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         document.getElementById('deleteBtn').addEventListener('click', () => {
+            const deletedTitle = evt.title;
+
             events[key] = events[key].filter(e => e.id !== id);
 
             if (events[key].length === 0) {
@@ -323,12 +386,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             saveEvents();
+
+            // deletion can also represent an event being cancelled
+            addNotification('Event removed: ' + deletedTitle);
+
             closeModal();
             renderCalendar();
         });
     }
 
-    // this uses most of the same form as adding an event but changes the old event
     function openEditEventModal(key, id) {
         const evt = (events[key] || []).find(e => e.id === id);
 
@@ -380,7 +446,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // changing the same event instead of making another one
             evt.title = newTitle;
             evt.time = document.getElementById('editTimeInput').value;
             evt.location = document.getElementById('editLocationInput').value.trim();
@@ -389,6 +454,10 @@ document.addEventListener('DOMContentLoaded', () => {
             evt.importance = document.getElementById('editImportanceInput').value;
 
             saveEvents();
+
+            // makes a notification when event information changes
+            addNotification('Event updated: ' + evt.title);
+
             closeModal();
             renderCalendar();
         });
@@ -434,11 +503,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // change the calendar whenever a different year level is picked
     yearFilter.addEventListener('change', () => {
         selectedYear = yearFilter.value;
         renderCalendar();
     });
 
+    notificationBtn.addEventListener('click', openNotifications);
+
+    loadNotifications();
     loadEvents(renderCalendar);
 });
