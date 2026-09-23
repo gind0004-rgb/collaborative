@@ -1,7 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY = 'schoolCalendarEvents';
+    const PERSONAL_KEY = 'schoolCalendarPersonalEvents';
     const NOTIFICATION_KEY = 'schoolCalendarNotifications';
     const REMINDER_KEY = 'schoolCalendarReminders';
+    const MODE_KEY = 'schoolCalendarMode';
+
     const IMPORTANCE_LEVELS = ['minor', 'moderate', 'major'];
 
     const calendarEl = document.getElementById('calendar');
@@ -14,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const yearFilter = document.getElementById('yearFilter');
     const notificationBtn = document.getElementById('notificationBtn');
     const notificationCount = document.getElementById('notificationCount');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const modeLabel = document.getElementById('modeLabel');
 
     const today = new Date();
 
@@ -21,11 +26,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let viewMonth = today.getMonth();
 
     let events = {};
+    let personalEvents = {};
     let notifications = [];
     let reminders = [];
 
     let activeFilters = new Set(IMPORTANCE_LEVELS);
     let selectedYear = 'all';
+
+    // admin is default so the older versions still work normally
+    let currentMode = localStorage.getItem(MODE_KEY) || 'admin';
 
 
     function pad(n) {
@@ -70,7 +79,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // gets old notifications from the browser
+    function loadPersonalEvents() {
+        const saved = localStorage.getItem(PERSONAL_KEY);
+
+        if (saved) {
+            try {
+                personalEvents = JSON.parse(saved);
+            } catch (e) {
+                personalEvents = {};
+            }
+        }
+    }
+
+
+    function savePersonalEvents() {
+        localStorage.setItem(PERSONAL_KEY, JSON.stringify(personalEvents));
+    }
+
+
     function loadNotifications() {
         const savedNotifications = localStorage.getItem(NOTIFICATION_KEY);
 
@@ -100,7 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         notifications.unshift(newNotification);
 
-        // stops the list getting too big
         if (notifications.length > 20) {
             notifications.pop();
         }
@@ -114,7 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // reminders are separate from normal notifications
     function loadReminders() {
         const savedReminders = localStorage.getItem(REMINDER_KEY);
 
@@ -130,6 +154,65 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function saveReminders() {
         localStorage.setItem(REMINDER_KEY, JSON.stringify(reminders));
+    }
+
+
+    function updateModeLabel() {
+        if (currentMode === 'admin') {
+            modeLabel.textContent = 'Admin mode';
+        } else {
+            modeLabel.textContent = 'Student mode';
+        }
+    }
+
+
+    function openSettings() {
+        modal.innerHTML = `
+            <h3>Account mode</h3>
+
+            <p class="prototypeNote">
+                Switch between the staff and student prototype views.
+            </p>
+
+            <button type="button"
+                class="modeButton ${currentMode === 'admin' ? 'currentMode' : ''}"
+                id="adminModeBtn">
+                Admin mode
+            </button>
+
+            <button type="button"
+                class="modeButton ${currentMode === 'student' ? 'currentMode' : ''}"
+                id="studentModeBtn">
+                Student mode
+            </button>
+
+            <div class="modalActions">
+                <button type="button" class="btnSecondary" id="closeSettingsBtn">Close</button>
+            </div>
+        `;
+
+        modalOverlay.classList.add('visible');
+
+        document.getElementById('adminModeBtn').addEventListener('click', () => {
+            changeMode('admin');
+        });
+
+        document.getElementById('studentModeBtn').addEventListener('click', () => {
+            changeMode('student');
+        });
+
+        document.getElementById('closeSettingsBtn').addEventListener('click', closeModal);
+    }
+
+
+    function changeMode(mode) {
+        currentMode = mode;
+
+        localStorage.setItem(MODE_KEY, currentMode);
+
+        updateModeLabel();
+        closeModal();
+        renderCalendar();
     }
 
 
@@ -213,17 +296,28 @@ document.addEventListener('DOMContentLoaded', () => {
             dayEl.appendChild(span);
 
             const addBtn = document.createElement('button');
+
             addBtn.type = 'button';
             addBtn.className = 'addEventBtn';
             addBtn.textContent = '+';
-            addBtn.setAttribute('aria-label', 'Add event');
 
-            addBtn.addEventListener('click', () => {
-                openAddEventModal(key);
-            });
+            if (currentMode === 'admin') {
+                addBtn.setAttribute('aria-label', 'Add school event');
+
+                addBtn.addEventListener('click', () => {
+                    openAddSchoolEventModal(key);
+                });
+            } else {
+                addBtn.setAttribute('aria-label', 'Add personal event');
+
+                addBtn.addEventListener('click', () => {
+                    openAddPersonalEventModal(key);
+                });
+            }
 
             dayEl.appendChild(addBtn);
 
+            // school events show in both modes
             (events[key] || [])
                 .filter(evt => activeFilters.has(evt.importance || 'minor'))
                 .filter(evt => {
@@ -240,15 +334,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     return eventYear === selectedYear;
                 })
                 .forEach(evt => {
-                    dayEl.appendChild(buildEventEl(key, evt));
+                    dayEl.appendChild(buildSchoolEventEl(key, evt));
                 });
+
+
+            // personal events only show to students
+            if (currentMode === 'student') {
+                (personalEvents[key] || []).forEach(evt => {
+                    dayEl.appendChild(buildPersonalEventEl(key, evt));
+                });
+            }
 
             calendarEl.appendChild(dayEl);
         }
     }
 
 
-    function buildEventEl(key, evt) {
+    function buildSchoolEventEl(key, evt) {
         const el = document.createElement('div');
         const importance = evt.importance || 'minor';
 
@@ -256,7 +358,25 @@ document.addEventListener('DOMContentLoaded', () => {
         el.textContent = evt.title;
 
         el.addEventListener('click', () => {
-            openViewEventModal(key, evt.id);
+            openSchoolEventModal(key, evt.id);
+        });
+
+        return el;
+    }
+
+
+    function buildPersonalEventEl(key, evt) {
+        const el = document.createElement('div');
+
+        el.className = 'event personalEvent';
+
+        el.innerHTML = `
+            ${escapeHtml(evt.title)}
+            <span class="personalLabel">Personal event</span>
+        `;
+
+        el.addEventListener('click', () => {
+            openPersonalEventModal(key, evt.id);
         });
 
         return el;
@@ -298,9 +418,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    function openAddEventModal(key) {
+    // this is the old add event form used by admin
+    function openAddSchoolEventModal(key) {
         modal.innerHTML = `
-            <h3>Add Event</h3>
+            <h3>Add School Event</h3>
 
             <label for="eventTitleInput">Title</label>
             <input type="text" id="eventTitleInput" maxlength="60" autocomplete="off" />
@@ -332,33 +453,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         modalOverlay.classList.add('visible');
 
-        const titleInput = document.getElementById('eventTitleInput');
-        titleInput.focus();
-
         document.getElementById('cancelBtn').addEventListener('click', closeModal);
 
         document.getElementById('saveBtn').addEventListener('click', () => {
-            const title = titleInput.value.trim();
+            const title = document.getElementById('eventTitleInput').value.trim();
 
             if (!title) {
-                titleInput.focus();
                 return;
             }
 
-            const description = document.getElementById('eventDescInput').value.trim();
-            const importance = document.getElementById('eventImportanceInput').value;
-            const time = document.getElementById('eventTimeInput').value;
-            const location = document.getElementById('eventLocationInput').value.trim();
-            const yearLevel = document.getElementById('eventYearInput').value;
-
             const newEvent = {
-                id: 'evt-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
-                title,
-                description,
-                importance,
-                time,
-                location,
-                yearLevel
+                id: 'evt-' + Date.now(),
+                title: title,
+                time: document.getElementById('eventTimeInput').value,
+                location: document.getElementById('eventLocationInput').value.trim(),
+                yearLevel: document.getElementById('eventYearInput').value,
+                description: document.getElementById('eventDescInput').value.trim(),
+                importance: document.getElementById('eventImportanceInput').value
             };
 
             if (!events[key]) {
@@ -368,8 +479,6 @@ document.addEventListener('DOMContentLoaded', () => {
             events[key].push(newEvent);
 
             saveEvents();
-
-            // normal update notification from version 6
             addNotification('New event added: ' + title);
 
             closeModal();
@@ -378,14 +487,70 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    function openViewEventModal(key, id) {
+    // students add seperate personal events
+    function openAddPersonalEventModal(key) {
+        modal.innerHTML = `
+            <h3>Add Personal Event</h3>
+
+            <p class="prototypeNote">
+                This event is only visible in your student view.
+            </p>
+
+            <label for="personalTitleInput">Title</label>
+            <input type="text" id="personalTitleInput" maxlength="60" />
+
+            <label for="personalTimeInput">Time</label>
+            <input type="time" id="personalTimeInput" />
+
+            <label for="personalLocationInput">Location</label>
+            <input type="text" id="personalLocationInput" maxlength="60" />
+
+            <label for="personalDescInput">Description</label>
+            <textarea id="personalDescInput"></textarea>
+
+            <div class="modalActions">
+                <button type="button" class="btnSecondary" id="cancelPersonalBtn">Cancel</button>
+                <button type="button" class="btnPrimary" id="savePersonalBtn">Save</button>
+            </div>
+        `;
+
+        modalOverlay.classList.add('visible');
+
+        document.getElementById('cancelPersonalBtn').addEventListener('click', closeModal);
+
+        document.getElementById('savePersonalBtn').addEventListener('click', () => {
+            const title = document.getElementById('personalTitleInput').value.trim();
+
+            if (!title) {
+                return;
+            }
+
+            const newPersonalEvent = {
+                id: 'personal-' + Date.now(),
+                title: title,
+                time: document.getElementById('personalTimeInput').value,
+                location: document.getElementById('personalLocationInput').value.trim(),
+                description: document.getElementById('personalDescInput').value.trim()
+            };
+
+            if (!personalEvents[key]) {
+                personalEvents[key] = [];
+            }
+
+            personalEvents[key].push(newPersonalEvent);
+
+            savePersonalEvents();
+
+            closeModal();
+            renderCalendar();
+        });
+    }
+
+
+    function openSchoolEventModal(key, id) {
         const evt = (events[key] || []).find(e => e.id === id);
 
         if (!evt) return;
-
-        const importance = evt.importance || 'minor';
-        const time = evt.time || 'Not set';
-        const location = evt.location || 'Not set';
 
         let yearText = 'All years';
 
@@ -393,26 +558,30 @@ document.addEventListener('DOMContentLoaded', () => {
             yearText = 'Year ' + evt.yearLevel;
         }
 
+        let adminButtons = '';
+
+        // only admin can edit or delete school events
+        if (currentMode === 'admin') {
+            adminButtons = `
+                <button type="button" class="btnDanger" id="deleteBtn">Delete</button>
+                <button type="button" class="btnSecondary" id="editBtn">Edit</button>
+            `;
+        }
+
         modal.innerHTML = `
             <h3>${escapeHtml(evt.title)}</h3>
 
-            <div class="eventMeta">
-                <span class="colorDot dot-${importance}"></span>
-                ${capitalize(importance)}
-            </div>
-
             <div class="eventInfo">
                 <p><strong>Date:</strong> ${key}</p>
-                <p><strong>Time:</strong> ${escapeHtml(time)}</p>
-                <p><strong>Location:</strong> ${escapeHtml(location)}</p>
+                <p><strong>Time:</strong> ${escapeHtml(evt.time || 'Not set')}</p>
+                <p><strong>Location:</strong> ${escapeHtml(evt.location || 'Not set')}</p>
                 <p><strong>Year level:</strong> ${yearText}</p>
                 <p><strong>Description:</strong> ${evt.description ? escapeHtml(evt.description) : 'No description'}</p>
             </div>
 
             <div class="modalActions">
-                <button type="button" class="btnDanger" id="deleteBtn">Delete</button>
+                ${adminButtons}
                 <button type="button" class="btnSecondary" id="reminderBtn">Set reminder</button>
-                <button type="button" class="btnSecondary" id="editBtn">Edit</button>
                 <button type="button" class="btnSecondary" id="closeBtn">Close</button>
             </div>
         `;
@@ -421,25 +590,72 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('closeBtn').addEventListener('click', closeModal);
 
-        document.getElementById('editBtn').addEventListener('click', () => {
-            openEditEventModal(key, id);
-        });
-
         document.getElementById('reminderBtn').addEventListener('click', () => {
-            openReminderModal(key, id);
+            openReminderModal(key, evt);
         });
 
-        document.getElementById('deleteBtn').addEventListener('click', () => {
-            const deletedTitle = evt.title;
+        if (currentMode === 'admin') {
+            document.getElementById('editBtn').addEventListener('click', () => {
+                openEditEventModal(key, id);
+            });
 
-            events[key] = events[key].filter(e => e.id !== id);
+            document.getElementById('deleteBtn').addEventListener('click', () => {
+                events[key] = events[key].filter(e => e.id !== id);
 
-            if (events[key].length === 0) {
-                delete events[key];
+                if (events[key].length === 0) {
+                    delete events[key];
+                }
+
+                saveEvents();
+                addNotification('Event removed: ' + evt.title);
+
+                closeModal();
+                renderCalendar();
+            });
+        }
+    }
+
+
+    function openPersonalEventModal(key, id) {
+        const evt = (personalEvents[key] || []).find(e => e.id === id);
+
+        if (!evt) return;
+
+        modal.innerHTML = `
+            <h3>${escapeHtml(evt.title)}</h3>
+
+            <p class="prototypeNote">Personal event</p>
+
+            <div class="eventInfo">
+                <p><strong>Date:</strong> ${key}</p>
+                <p><strong>Time:</strong> ${escapeHtml(evt.time || 'Not set')}</p>
+                <p><strong>Location:</strong> ${escapeHtml(evt.location || 'Not set')}</p>
+                <p><strong>Description:</strong> ${evt.description ? escapeHtml(evt.description) : 'No description'}</p>
+            </div>
+
+            <div class="modalActions">
+                <button type="button" class="btnDanger" id="deletePersonalBtn">Delete</button>
+                <button type="button" class="btnSecondary" id="personalReminderBtn">Set reminder</button>
+                <button type="button" class="btnSecondary" id="closePersonalBtn">Close</button>
+            </div>
+        `;
+
+        modalOverlay.classList.add('visible');
+
+        document.getElementById('closePersonalBtn').addEventListener('click', closeModal);
+
+        document.getElementById('personalReminderBtn').addEventListener('click', () => {
+            openReminderModal(key, evt);
+        });
+
+        document.getElementById('deletePersonalBtn').addEventListener('click', () => {
+            personalEvents[key] = personalEvents[key].filter(e => e.id !== id);
+
+            if (personalEvents[key].length === 0) {
+                delete personalEvents[key];
             }
 
-            saveEvents();
-            addNotification('Event removed: ' + deletedTitle);
+            savePersonalEvents();
 
             closeModal();
             renderCalendar();
@@ -447,12 +663,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // reminder setup for native, email or both
-    function openReminderModal(key, id) {
-        const evt = (events[key] || []).find(e => e.id === id);
-
-        if (!evt) return;
-
+    function openReminderModal(key, evt) {
         modal.innerHTML = `
             <h3>Set reminder</h3>
 
@@ -478,21 +689,18 @@ document.addEventListener('DOMContentLoaded', () => {
             <input type="email" id="reminderEmail" placeholder="only needed for email reminders" />
 
             <div class="modalActions">
-                <button type="button" class="btnSecondary" id="backReminderBtn">Back</button>
+                <button type="button" class="btnSecondary" id="cancelReminderBtn">Cancel</button>
                 <button type="button" class="btnPrimary" id="saveReminderBtn">Save reminder</button>
             </div>
         `;
 
-        document.getElementById('backReminderBtn').addEventListener('click', () => {
-            openViewEventModal(key, id);
-        });
+        document.getElementById('cancelReminderBtn').addEventListener('click', closeModal);
 
         document.getElementById('saveReminderBtn').addEventListener('click', () => {
             const method = document.getElementById('reminderMethod').value;
             const reminderTime = document.getElementById('reminderTime').value;
             const email = document.getElementById('reminderEmail').value.trim();
 
-            // email is only required when email is selected
             if ((method === 'email' || method === 'both') && !email.includes('@')) {
                 document.getElementById('reminderEmail').focus();
                 return;
@@ -500,7 +708,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const newReminder = {
                 id: 'rem-' + Date.now(),
-                eventId: id,
                 eventDate: key,
                 eventTitle: evt.title,
                 eventTime: evt.time || '',
@@ -513,7 +720,6 @@ document.addEventListener('DOMContentLoaded', () => {
             reminders.push(newReminder);
             saveReminders();
 
-            // confirmation only, this does not add anything to notifications
             modal.innerHTML = `
                 <h3>Reminder saved</h3>
 
@@ -535,15 +741,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // works out when an in-app reminder should appear
     function getReminderDate(reminder) {
         let eventHour = 9;
         let eventMinute = 0;
 
         if (reminder.eventTime && reminder.eventTime.includes(':')) {
-            const timeParts = reminder.eventTime.split(':');
-            eventHour = Number(timeParts[0]);
-            eventMinute = Number(timeParts[1]);
+            const parts = reminder.eventTime.split(':');
+
+            eventHour = Number(parts[0]);
+            eventMinute = Number(parts[1]);
         }
 
         const dateParts = reminder.eventDate.split('-');
@@ -574,7 +780,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // checks if a saved reminder is now due
     function checkReminders() {
         const now = new Date();
         let changed = false;
@@ -587,7 +792,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const reminderDate = getReminderDate(reminder);
 
             if (now >= reminderDate) {
-                // native reminders show inside the website
                 if (reminder.method === 'native' || reminder.method === 'both') {
                     addNotification(
                         'Approaching event: ' +
@@ -597,7 +801,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     );
                 }
 
-                // email is only represented by the prototype
                 reminder.delivered = true;
                 changed = true;
             }
@@ -621,13 +824,13 @@ document.addEventListener('DOMContentLoaded', () => {
             <h3>Edit Event</h3>
 
             <label for="editTitleInput">Title</label>
-            <input type="text" id="editTitleInput" maxlength="60" value="${escapeHtml(evt.title)}" />
+            <input type="text" id="editTitleInput" value="${escapeHtml(evt.title)}" />
 
             <label for="editTimeInput">Time</label>
             <input type="time" id="editTimeInput" value="${evt.time || ''}" />
 
             <label for="editLocationInput">Location</label>
-            <input type="text" id="editLocationInput" maxlength="60" value="${escapeHtml(evt.location || '')}" />
+            <input type="text" id="editLocationInput" value="${escapeHtml(evt.location || '')}" />
 
             <label for="editYearInput">Year level</label>
             <select id="editYearInput">
@@ -649,18 +852,11 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
 
         document.getElementById('cancelEditBtn').addEventListener('click', () => {
-            openViewEventModal(key, id);
+            openSchoolEventModal(key, id);
         });
 
         document.getElementById('saveEditBtn').addEventListener('click', () => {
-            const newTitle = document.getElementById('editTitleInput').value.trim();
-
-            if (!newTitle) {
-                document.getElementById('editTitleInput').focus();
-                return;
-            }
-
-            evt.title = newTitle;
+            evt.title = document.getElementById('editTitleInput').value.trim();
             evt.time = document.getElementById('editTimeInput').value;
             evt.location = document.getElementById('editLocationInput').value.trim();
             evt.yearLevel = document.getElementById('editYearInput').value;
@@ -727,15 +923,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     notificationBtn.addEventListener('click', openNotifications);
+    settingsBtn.addEventListener('click', openSettings);
+
+    updateModeLabel();
 
     loadNotifications();
     loadReminders();
+    loadPersonalEvents();
 
     loadEvents(() => {
         renderCalendar();
         checkReminders();
     });
 
-    // checks once per minute while the page is open
     setInterval(checkReminders, 60000);
 });
