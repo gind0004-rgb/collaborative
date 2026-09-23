@@ -185,7 +185,11 @@ document.addEventListener('DOMContentLoaded', () => {
             addBtn.className = 'addEventBtn';
             addBtn.textContent = '+';
             addBtn.setAttribute('aria-label', 'Add event');
-            addBtn.addEventListener('click', () => openAddEventModal(key));
+
+            addBtn.addEventListener('click', () => {
+                openAddEventModal(key);
+            });
+
             dayEl.appendChild(addBtn);
 
             (events[key] || [])
@@ -203,7 +207,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     return eventYear === selectedYear;
                 })
-                .forEach(evt => dayEl.appendChild(buildEventEl(key, evt)));
+                .forEach(evt => {
+                    dayEl.appendChild(buildEventEl(key, evt));
+                });
 
             calendarEl.appendChild(dayEl);
         }
@@ -216,7 +222,9 @@ document.addEventListener('DOMContentLoaded', () => {
         el.className = `event importance-${importance}`;
         el.textContent = evt.title;
 
-        el.addEventListener('click', () => openViewEventModal(key, evt.id));
+        el.addEventListener('click', () => {
+            openViewEventModal(key, evt.id);
+        });
 
         return el;
     }
@@ -573,11 +581,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCalendar();
     });
 
-    notificationBtn.addEventListener('click', openNotifications);
-
-    loadNotifications();
-    loadEvents(renderCalendar);
-});
     notificationBtn.addEventListener('click', openNotifications);
 
     loadNotifications();
