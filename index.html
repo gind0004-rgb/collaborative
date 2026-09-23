@@ -9,7 +9,15 @@
 <body>
 
     <header>
-        <h1>School Events</h1>
+        <div class="headerContent">
+            <h1>School Events</h1>
+
+            <!-- notifications added in this update -->
+            <button type="button" id="notificationBtn" class="notificationBtn">
+                Notifications
+                <span id="notificationCount">0</span>
+            </button>
+        </div>
     </header>
 
     <main>
@@ -38,7 +46,6 @@
                 <span class="colorDot dot-major"></span> Major
             </label>
 
-            <!-- added in version 6 so students can only see their year -->
             <label class="filterItem">
                 Year:
                 <select id="yearFilter">
