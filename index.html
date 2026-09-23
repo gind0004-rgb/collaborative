@@ -22,17 +22,31 @@
         <!-- colour legend and filter -->
         <div class="filterBar" id="filterBar">
             <span class="filterLabel">Show:</span>
+
             <label class="filterItem">
                 <input type="checkbox" class="filterCheckbox" value="minor" checked>
                 <span class="colorDot dot-minor"></span> Minor
             </label>
+
             <label class="filterItem">
                 <input type="checkbox" class="filterCheckbox" value="moderate" checked>
                 <span class="colorDot dot-moderate"></span> Moderate
             </label>
+
             <label class="filterItem">
                 <input type="checkbox" class="filterCheckbox" value="major" checked>
                 <span class="colorDot dot-major"></span> Major
+            </label>
+
+            <!-- added in version 6 so students can only see their year -->
+            <label class="filterItem">
+                Year:
+                <select id="yearFilter">
+                    <option value="all">All years</option>
+                    <option value="10">Year 10</option>
+                    <option value="11">Year 11</option>
+                    <option value="12">Year 12</option>
+                </select>
             </label>
         </div>
 
